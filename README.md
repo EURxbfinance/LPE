@@ -1,4 +1,4 @@
-../liquidity-event-sc Contract
+Liquidity-Event Contract
 =================
 
 **Requirements** 
