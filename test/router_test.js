@@ -30,15 +30,17 @@ contract('Router', (accounts) => {
   var mockRouter;
   var mockPair;
   var mockToken;
+  var mockEurXBToken;
 
   beforeEach(async () => {
     router = await Router.new(teamAddress);
     mockRouter = await MockContract.new();
     mockPair = await MockContract.new();
     mockToken = await MockContract.new();
+    mockEurXBToken = await MockContract.new();
     await router.configure(
       mockRouter.address,
-      mockToken.address,
+      mockEurXBToken.address,
       mockPair.address
     );
   });
@@ -46,7 +48,7 @@ contract('Router', (accounts) => {
   it('should configure properly', async () => {
     expect(await router.uniswapRouter()).to.be.equal(mockRouter.address);
     expect(await router.teamAddress()).to.be.equal(teamAddress);
-    expect(await router.EURxb()).to.be.equal(mockToken.address);
+    expect(await router.EURxb()).to.be.equal(mockEurXBToken.address);
     expect(await router.pairAddress()).to.be.equal(mockPair.address);
   });
 
@@ -55,40 +57,40 @@ contract('Router', (accounts) => {
     await expectRevert(router.closeContract(), "closed");
   });
 
-  const setupMockToken = async (balanceMock, transferStatusMock) => {
-    const balanceOfCalldata = (await IERC20.at(mockToken.address)).contract
+  const setupMockToken = async (balanceMock, transferStatusMock, mockTokenInstance) => {
+    const balanceOfCalldata = (await IERC20.at(mockTokenInstance.address)).contract
       .methods.balanceOf(ZERO_ADDRESS).encodeABI();
-    const transferCalldata = (await IERC20.at(mockToken.address)).contract
+    const transferCalldata = (await IERC20.at(mockTokenInstance.address)).contract
       .methods.transfer(ZERO_ADDRESS, ZERO).encodeABI();
     await mockToken.givenMethodReturnUint(balanceOfCalldata, balanceMock);
     await mockToken.givenMethodReturnBool(transferCalldata, transferStatusMock);
   };
 
   it('should revert if transfer failed', async () => {
-    await setupMockToken(ether('10'), false);
+    await setupMockToken(ether('10'), false, mockEurXBToken);
     await expectRevert(router.closeContract(), "!transfer");
   });
 
   it('should close even if balance is zero', async () => {
-    await setupMockToken(ZERO, true);
+    await setupMockToken(ZERO, true, mockEurXBToken);
     await router.closeContract();
     expect(await router.isClosedContract()).to.be.equal(true);
   });
 
   it('should close even if balance is greater than zero', async () => {
-    await setupMockToken(ether('10'), true);
+    await setupMockToken(ether('10'), true, mockEurXBToken);
     await router.closeContract();
     expect(await router.isClosedContract()).to.be.equal(true);
   });
 
   it('should revert if contract closed when adding liquidity', async () => {
-    await setupMockToken(ether('10'), true);
+    await setupMockToken(ether('10'), true, mockEurXBToken);
     await router.closeContract();
     await expectRevert(router.addLiquidity(mockToken.address, ether('10')), "closed");
   });
 
-  const setUpDecimals = async (decimals) => {
-    const decimalsCalldata = (await IERC20.at(mockToken.address)).contracts
+  const setUpDecimals = async (decimals, mockTokenInstance) => {
+    const decimalsCalldata = (await IERC20.at(mockTokenInstance.address)).contracts
       .methods.decimals().encodeABI();
     await mockToken.givenMethodReturnUint(decimalsCalldata, decimals);
   };
@@ -100,7 +102,8 @@ contract('Router', (accounts) => {
   };
 
   it('should revert adding liquidity of balance eur gt 1 eurxb token', async () => {
-    await setupMockToken(ether('10'), true);
+    await setUpReserves(ether('100'), ether('100'), time.latest());
+    await setupMockToken(ether('10'), true, mockEurXBToken);
     await expectRevert(router.addLiquidity(mockToken.address, ether('10')), "emptyEURxbBalance");
   });
 
