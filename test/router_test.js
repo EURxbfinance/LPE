@@ -16,6 +16,7 @@ const { ZERO, ONE, getMockTokenPrepared } = require('./utils/common');
 const Router = artifacts.require('Router');
 const IERC20 = artifacts.require('IERC20');
 const IUniswapV2Router02 = artifacts.require('IUniswapV2Router02');
+const IUniswapV2Pair = artifacts.require('IUniswapV2Pair');
 
 const MockContract = artifacts.require("MockContract");
 
@@ -86,12 +87,28 @@ contract('Router', (accounts) => {
     await expectRevert(router.addLiquidity(mockToken.address, ether('10')), "closed");
   });
 
-  const setUpReserves = async () => {
-    
+  const setUpDecimals = async (decimals) => {
+    const decimalsCalldata = (await IERC20.at(mockToken.address)).contracts
+      .methods.decimals().encodeABI();
+    await mockToken.givenMethodReturnUint(decimalsCalldata, decimals);
+  };
+
+  const setUpReserves = async (reserve1, reserve2, blockTimestampLast) => {
+    const getReservesCalldata = (await IUniswapV2Pair.at(mockPair.address)).contract
+      .methods.getReserves().encodeABI();
+    await mockPair.givenMethodReturn(getReservesCalldata, [reserve1, reserve2, blockTimestampLast]);
   };
 
   it('should revert adding liquidity of balance eur gt 1 eurxb token', async () => {
     await setupMockToken(ether('10'), true);
     await expectRevert(router.addLiquidity(mockToken.address, ether('10')), "emptyEURxbBalance");
+  });
+
+  it('should revert if sort tokens are equal', async () => {
+
+  });
+
+  it('should revert if first in sorted tokens is zero address', async () => {
+
   });
 });

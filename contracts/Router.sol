@@ -22,7 +22,7 @@ contract Router is Ownable, Initializable {
     event EmptyEURxbBalance();
 
     IERC20 public EURxb;
-    IUniswapV2Router02 public uniswapRouter;
+    IUniswapV2Router02 public uniswapLikeRouter;
 
     address public teamAddress;
     bool public isClosedContract;
@@ -33,15 +33,15 @@ contract Router is Ownable, Initializable {
     }
 
     /**
-     * @dev setup uniswap router
+     * @dev setup uniswapLike router
      */
     function configure(
-        address _uniswapRouter,
+        address _uniswapLikeRouter,
         address _EURxb,
         address _pairAddress
     ) external initializer {
-        // set uniswap router contract address
-        uniswapRouter = IUniswapV2Router02(_uniswapRouter);
+        // set uniswapLike router contract address
+        uniswapLikeRouter = IUniswapV2Router02(_uniswapLikeRouter);
         // set eurxb contract address
         EURxb = IERC20(_EURxb);
         pairAddress = _pairAddress;
@@ -94,11 +94,11 @@ contract Router is Ownable, Initializable {
 
         TransferHelper.safeTransferFrom(token, sender, address(this), exchangeAmount.mul(2));
 
-        // approve transfer tokens and eurxbs to uniswap pair
-        TransferHelper.safeApprove(token, address(uniswapRouter), exchangeAmount);
-        TransferHelper.safeApprove(address(EURxb), address(uniswapRouter), amountEUR);
+        // approve transfer tokens and eurxbs to uniswapLike pair
+        TransferHelper.safeApprove(token, address(uniswapLikeRouter), exchangeAmount);
+        TransferHelper.safeApprove(address(EURxb), address(uniswapLikeRouter), amountEUR);
 
-        (, , uint256 liquidityAmount) = uniswapRouter
+        (, , uint256 liquidityAmount) = uniswapLikeRouter
         .addLiquidity(
             address(EURxb),
             token,
@@ -116,7 +116,7 @@ contract Router is Ownable, Initializable {
     }
 
     /**
-     * @dev returns uniswap pair reserves numbers or default numbers
+     * @dev returns uniswapLike pair reserves numbers or default numbers
      * used to get token/eurxb ratio
      */
     function _getReservesRatio(address token)
@@ -136,7 +136,7 @@ contract Router is Ownable, Initializable {
     }
 
     /**
-     * @dev sorts token addresses just like uniswap router does
+     * @dev sorts token addresses just like uniswapLike router does
      */
     function _sortTokens(address tokenA, address tokenB)
     internal pure
