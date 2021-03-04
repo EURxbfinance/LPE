@@ -7,7 +7,7 @@ source ./scripts/utils/generate_truffle_config.sh
 rm -rf ./build
 
 # build our contracts
-generate_truffle_config "0.7.6" ".\/contracts"
+generate_truffle_config "0.6.6" ".\/contracts"
 truffle compile
 
 # remove config file

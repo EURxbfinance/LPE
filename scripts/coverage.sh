@@ -10,7 +10,7 @@ rm -rf ./build
 ./scripts/third_party_build.sh
 
 # generate truffle config for coverage
-generate_truffle_config "0.7.6" ".\/contracts"
+generate_truffle_config "0.6.6" ".\/contracts"
 
 #run coverage
 node --max-old-space-size=4096 ./node_modules/.bin/truffle run coverage

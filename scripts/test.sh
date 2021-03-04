@@ -5,7 +5,7 @@ source ./scripts/utils/generate_truffle_config.sh
 
 if [[ $1 = "+fast" ]]; then
   echo "Run tests without build!"
-  generate_truffle_config "0.7.6" ".\/contracts"
+  generate_truffle_config "0.6.6" ".\/contracts"
 
   #remove +fast parameter
   shift
@@ -17,7 +17,7 @@ else
   ./scripts/third_party_build.sh
 
   # build our contracts
-  generate_truffle_config "0.7.6" ".\/contracts"
+  generate_truffle_config "0.6.6" ".\/contracts"
   truffle compile
 fi
 

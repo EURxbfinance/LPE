@@ -1,4 +1,5 @@
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.4.22 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -6,11 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-
-import "./interfaces/IBalancerPool.sol";
-import "./interfaces/IStakingManager.sol";
-import "./templates/Initializable.sol";
-
+import "@openzeppelin/contracts/proxy/Initializable.sol";
 
 /**
  * @title Router
@@ -54,9 +51,10 @@ contract Router is Ownable, Initializable {
      * @dev Close contract
      */
     function closeContract() external onlyOwner {
+        require(!isClosedContract, "closed");
         uint256 balance = EURxb.balanceOf(address(this));
         if (balance > 0) {
-            EURxb.transfer(teamAddress, balance);
+            require(EURxb.transfer(teamAddress, balance), "!transfer");
         }
         isClosedContract = true;
     }
@@ -67,7 +65,7 @@ contract Router is Ownable, Initializable {
      * @param amount number of tokens
      */
     function addLiquidity(address token, uint256 amount) external {
-        require(!isClosedContract, "Contract closed");
+        require(!isClosedContract, "closed");
         _addLiquidity(_msgSender(), token, amount);
     }
 
@@ -84,7 +82,7 @@ contract Router is Ownable, Initializable {
         uint256 amountEUR = exchangeAmount.mul(eurRatio).div(tokenRatio);
         uint256 balanceEUR = EURxb.balanceOf(address(this));
 
-        require(balanceEUR >= 10 ** 18, "EmptyEURxbBalance"); // balance great then 1 EURxb token
+        require(balanceEUR >= 10 ** 18, "emptyEURxbBalance"); // balance great then 1 EURxb token
 
         // check if we don't have enough eurxb tokens
         if (balanceEUR <= amountEUR) {
