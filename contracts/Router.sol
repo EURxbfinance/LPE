@@ -142,9 +142,9 @@ contract Router is Ownable, Initializable {
     internal pure
     returns (address token0, address token1)
     {
-        require(tokenA != tokenB, "identical tokens");
+        require(tokenA != tokenB, "identicalTokens");
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'zero address');
+        require(token0 != address(0), 'zeroAddress');
     }
 
     function _getTokenDecimals(address token) internal returns (uint8) {

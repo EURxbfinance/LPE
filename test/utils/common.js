@@ -1,5 +1,7 @@
 const { BN, ether } = require('@openzeppelin/test-helpers');
 
+const MockToken = artifacts.require('MockToken');
+
 /* eslint-disable */
 function increaseTime(duration) {
   const id = Date.now();
