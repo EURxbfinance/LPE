@@ -153,6 +153,11 @@ contract('Router', (accounts) => {
 
       await mockToken.approve(router.address, ether('100'), {from: bob});
 
+      const pairTransferCalldata = (await IERC20.at(mockPair.address)).contract
+        .methods.transfer(ZERO_ADDRESS, ZERO).encodeABI();
+
+      await mockPair.givenMethodReturnBool(pairTransferCalldata, true);
+
       const addLiquidityCalldata = (await IUniswapV2Router02.at(mockRouter.address)).contract
         .methods.addLiquidity(
           ZERO_ADDRESS,
@@ -172,6 +177,7 @@ contract('Router', (accounts) => {
         )
       );
       await router.addLiquidity(mockToken.address, ether('100'), {from: bob});
+      expect(await mockToken.balanceOf(teamAddress)).to.be.bignumber.equal(ether('200'));
     });
 
   });
