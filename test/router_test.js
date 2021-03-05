@@ -11,7 +11,7 @@ const {
   time
 } = require('@openzeppelin/test-helpers');
 const { ZERO_ADDRESS } = constants;
-const { ZERO, ONE, getMockTokenPrepared } = require('./utils/common');
+const { ZERO, ONE, getMockTokenPrepared, processEventArgs } = require('./utils/common');
 
 const Router = artifacts.require('Router');
 const IERC20 = artifacts.require('IERC20');
@@ -42,32 +42,6 @@ contract('Router', (accounts) => {
   //     .methods.decimals().encodeABI();
   //   await mockToken.givenMethodReturnUint(decimalsCalldata, decimals);
   // };
-
-  const setUpReserves = async (reserve1, reserve2) => {
-
-    // create pair
-
-    // const getPairCalldata = (await IUniswapV2Factory.at(mockFactory.address)).contract
-    //   .methods.getPair(ZERO_ADDRESS, ZERO_ADDRESS).encodeABI();
-    //
-    // await mockFactory.givenMethodReturnAddress(getPairCalldata, mockPair.address);
-    //
-    // const createPairCalldata = (await IUniswapV2Factory.at(mockFactory.address)).contract
-    //   .methods.createPair(ZERO_ADDRESS, ZERO_ADDRESS).encodeABI();
-    //
-    // await mockFactory.givenMethodReturnAddress(createPairCalldata, mockPair.address);
-    //
-    //
-    // const getReservesCalldata = (await IUniswapV2Pair.at(mockPair.address)).contract
-    //   .methods.getReserves().encodeABI();
-    //
-    // await mockPair.givenMethodReturn(getReservesCalldata,
-    //   web3.eth.abi.encodeParameters(
-    //     ["uint112", "uint112", "uint32"],
-    //     [reserve1, reserve2, ZERO]
-    //   )
-    // );
-  };
 
   const setupMockContractToken = async (balanceMock, transferStatusMock, mockTokenInstance) => {
     const balanceOfCalldata = (await IERC20.at(mockTokenInstance.address)).contract
@@ -137,39 +111,71 @@ contract('Router', (accounts) => {
 
   });
 
+  const setUpReserves = async (reserve1, reserve2) => {
+
+    await mockToken.approve(mockPair.address, ether('100'), {from: bob});
+    await mockToken.transfer(mockPair.address, ether('100'), {from: bob});
+
+    await mockEurXBToken.approve(mockPair.address, ether('100'), {from: bob});
+    await mockEurXBToken.transfer(mockPair.address, ether('100'), {from: bob});
+
+    await mockPair.mint(bob, {from: bob});
+
+    const result = await mockPair.getReserves();
+
+    console.log(result.reserve0.toString(), result.reserve1.toString());
+
+    // const getPairCalldata = (await IUniswapV2Factory.at(mockFactory.address)).contract
+    //   .methods.getPair(ZERO_ADDRESS, ZERO_ADDRESS).encodeABI();
+    //
+    // await mockFactory.givenMethodReturnAddress(getPairCalldata, mockPair.address);
+    //
+    // const createPairCalldata = (await IUniswapV2Factory.at(mockFactory.address)).contract
+    //   .methods.createPair(ZERO_ADDRESS, ZERO_ADDRESS).encodeABI();
+    //
+    // await mockFactory.givenMethodReturnAddress(createPairCalldata, mockPair.address);
+    //
+    //
+    // const getReservesCalldata = (await IUniswapV2Pair.at(mockPair.address)).contract
+    //   .methods.getReserves().encodeABI();
+    //
+    // await mockPair.givenMethodReturn(getReservesCalldata,
+    //   web3.eth.abi.encodeParameters(
+    //     ["uint112", "uint112", "uint32"],
+    //     [reserve1, reserve2, ZERO]
+    //   )
+    // );
+  };
+
   describe('with real mock token', () => {
 
     beforeEach(async () => {
-      router = await Router.new(teamAddress);
+      router = await Router.new();
       mockRouter = await MockContract.new();
       mockToken = await getMockTokenPrepared(bob, ether('1000'), ether('1000'), owner);
       mockEurXBToken = await getMockTokenPrepared(bob, ether('1000'), ether('1000'), owner);;
 
       mockFactory = await UniswapV2Factory.new(feeToSetter);
 
-      mockPair = await IUniswapV2Pair.at(
-        await mockFactory.createPair(mockToken.address, mockEurXBToken.address)
-      );
+      const pairCreationReceipt = await mockFactory.createPair(mockToken.address, mockEurXBToken.address);
 
-      await mockToken.approve(mockPair.address, ether('100'), {from: bob});
-      await mockToken.transfer(mockPair.address, ether('100'), {from: bob});
-
-      await mockEurXBToken.approve(mockPair.address, ether('100'), {from: bob});
-      await mockEurXBToken.transfer(mockPair.address, ether('100'), {from: bob});
-
-      await mockPair.mint(bob, {from: bob});
+      await processEventArgs(pairCreationReceipt, 'PairCreated', async (args) => {
+        mockPair = await IUniswapV2Pair.at(args.pair);
+      });
 
       await router.configure(
         mockRouter.address,
         mockEurXBToken.address,
-        mockPair.address
+        mockToken.address,
+        teamAddress
       );
     });
 
     it('should revert adding liquidity of balance eur gt 1 eurxb token', async () => {
       await setUpReserves(ether('100'), ether('100'));
-      await setupMockContractToken(ether('0.9'), true, mockEurXBToken);
-      await expectRevert(router.addLiquidity(mockToken.address, ether('10')), "emptyEURxbBalance");
+      // await setupMockContractToken(ether('0.9'), true, mockEurXBToken);
+      router.addLiquidity(ether('10'), new BN((60 * 10).toString()), {from: bob});
+      // await expectRevert(router.addLiquidity(ether('10'), new BN((60 * 10).toString())), "emptyEURxbBalance");
     });
     //
     // it('should revert if sort tokens are equal', async () => {
