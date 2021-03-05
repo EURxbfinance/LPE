@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.4.22 <0.9.0;
+pragma solidity >= 0.7.6 <0.9.0;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -17,7 +17,6 @@ import "./interfaces/IStakingRewards.sol";
 import "./libraries/UniswapV2Library.sol";
 
 contract Incentivizer is IStakingRewards, RewardsDistributionRecipient, ReentrancyGuard, Initializable, Context {
-
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

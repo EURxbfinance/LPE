@@ -24,19 +24,15 @@ const fs = require('fs');
 
 const mnemonic = fs.readFileSync('.secret').toString().trim();
 
-// NB: It's important to wrap the provider as a function.
 const rinkebyNetworkConfig = {
   provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`),
   network_id: 4, // Rinkeby's id
+  networkCheckTimeout: 10000000,
+  gasLimit: 5000000,
   from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
   websockets: true,
-};
-
-const ganacheNetworkConfig = {
-  host: "127.0.0.1",
-  port: 8545,
-  network_id: "*",
-  websockets: true
+  confirmations: 2,
+  gasPrice: 25000000000,
 };
 
 module.exports = {
