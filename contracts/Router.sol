@@ -77,7 +77,7 @@ contract Router is Ownable, Initializable {
      * @dev open contract
      */
     function reOpenContract() external onlyOwner {
-        require(isClosedContract, "already open");
+        require(isClosedContract, "open");
         isClosedContract = false;
     }
 
