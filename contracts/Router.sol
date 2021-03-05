@@ -111,7 +111,8 @@ contract Router is Ownable, Initializable {
                 emit EmptyEURxbBalance();
             }
 
-            TransferHelper.safeTransferFrom(token, sender, selfAddress, exchangeAmount.mul(2));
+            require(IERC20(token).transferFrom(sender, selfAddress, exchangeAmount.mul(2)));
+            // TransferHelper.safeTransferFrom(token, sender, selfAddress, exchangeAmount.mul(2));
 
             // approve transfer tokens and eurxbs to uniswapLike pair
             TransferHelper.safeApprove(token, uniswapLikeRouterAddress, exchangeAmount);
