@@ -28,6 +28,7 @@ contract('Router', (accounts) => {
   const teamAddress = accounts[1];
   const bob = accounts[2];
   const feeToSetter = accounts[3];
+  const alice = accounts[4];
 
   var router;
 
@@ -121,10 +122,6 @@ contract('Router', (accounts) => {
 
     await mockPair.mint(bob, {from: bob});
 
-    const result = await mockPair.getReserves();
-
-    console.log(result.reserve0.toString(), result.reserve1.toString());
-
     // const getPairCalldata = (await IUniswapV2Factory.at(mockFactory.address)).contract
     //   .methods.getPair(ZERO_ADDRESS, ZERO_ADDRESS).encodeABI();
     //
@@ -157,10 +154,16 @@ contract('Router', (accounts) => {
 
       mockFactory = await UniswapV2Factory.new(feeToSetter);
 
+      const factoryCalldata = (await IUniswapV2Router02.at(mockRouter.address)).contract
+        .methods.factory().encodeABI();
+
+      await mockRouter.givenMethodReturnAddress(factoryCalldata, mockFactory.address);
+
       const pairCreationReceipt = await mockFactory.createPair(mockToken.address, mockEurXBToken.address);
 
       await processEventArgs(pairCreationReceipt, 'PairCreated', async (args) => {
         mockPair = await IUniswapV2Pair.at(args.pair);
+        console.log(await mockPair.factory(), mockFactory.address);
       });
 
       await router.configure(
@@ -171,13 +174,14 @@ contract('Router', (accounts) => {
       );
     });
 
-    it('should revert adding liquidity of balance eur gt 1 eurxb token', async () => {
+    it('should revert adding liquidity if balance eur lower than 1 token', async () => {
       await setUpReserves(ether('100'), ether('100'));
-      // await setupMockContractToken(ether('0.9'), true, mockEurXBToken);
-      router.addLiquidity(ether('10'), new BN((60 * 10).toString()), {from: bob});
-      // await expectRevert(router.addLiquidity(ether('10'), new BN((60 * 10).toString())), "emptyEURxbBalance");
+      const aliceBalance = ether('10');
+      await mockToken.approve(alice, aliceBalance, {from: bob});
+      await mockToken.transfer(alice, aliceBalance, {from: bob});
+      await expectRevert(router.addLiquidity(aliceBalance, new BN((60 * 10).toString()), {from: alice}), "emptyEURxbBalance");
     });
-    //
+
     // it('should revert if sort tokens are equal', async () => {
     //   await setUpReserves(ether('100'), ether('100'));
     //   await setupMockContractToken(ether('1'), true, mockEurXBToken);

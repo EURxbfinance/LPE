@@ -34,6 +34,7 @@ contract Router is Ownable, Initializable {
      */
     event EmptyEURxbBalance();
 
+
     constructor() public {
         startWeightToken = 27 * 10 ** 18;
         startWeightEurxb = 23 * 10 ** 18;
@@ -94,7 +95,6 @@ contract Router is Ownable, Initializable {
         address uniswapLikeRouterAddress = address(uniswapLikeRouter);
 
         uint256 amountEUR;
-
         {
             (uint256 tokenRatio, uint256 eurRatio) = _getReservesRatio();
 
@@ -134,7 +134,6 @@ contract Router is Ownable, Initializable {
 
         TransferHelper.safeApprove(token, uniswapLikeRouterAddress, 0);
     }
-
     /**
      * @dev returns uniswapLike pair reserves numbers or default numbers
      * used to get token/eurxb ratio
