@@ -75,10 +75,11 @@ contract('Incentivizer', (accounts) => {
     return [aliceReceipt, bobReceipt];
   };
 
-  const provideReward = async (rewardAmount) => {
-    await rewardsToken.approve(incentivizer.address, rewardAmount, {from: rewardsDistribution});
-    await rewardsToken.transfer(incentivizer.address, rewardAmount, {from: rewardsDistribution});
-    return await incentivizer.notifyRewardAmount(rewardAmount, {from: rewardsDistribution});
+  const provideReward = async (rewardAmount, otherFrom=null) => {
+    const txParams = {from: !otherFrom ? rewardsDistribution : otherFrom};
+    await rewardsToken.approve(incentivizer.address, rewardAmount, txParams);
+    await rewardsToken.transfer(incentivizer.address, rewardAmount, txParams);
+    return await incentivizer.notifyRewardAmount(rewardAmount, txParams);
   };
 
   const increaseTimeToStakingsEnd = async () => {
@@ -93,149 +94,206 @@ contract('Incentivizer', (accounts) => {
     };
   };
 
-  beforeEach(async () => {
-    incentivizer = await Incentivizer.new();
-    stakingToken = await getMockTokenPrepared(
-      bob,
-      stakingTokenAmountToTransfer,
-      stakingTokenTotalSupply,
-      alice
-    );
-    rewardsToken = await getMockTokenPrepared(
-      rewardsDistribution,
-      rewardsTokenAmountToTransfer,
-      rewardsTokenTotalSupply,
-      rewardsDistribution
-    );
-
-    await incentivizer.configure(
-      rewardsDistribution,
-      rewardsToken.address,
-      stakingToken.address,
-      rewardsDuration
-    );
-
-  });
-
-  it('should configure properly', async () => {
-    expect(await incentivizer.rewardsToken()).to.be.equal(rewardsToken.address);
-    expect(await incentivizer.stakingToken()).to.be.equal(stakingToken.address);
-    expect(await incentivizer.rewardsDistribution()).to.be.equal(rewardsDistribution);
-    expect(await incentivizer.rewardsDuration()).to.be.bignumber.equal(rewardsDuration);
-  });
-
-  describe('views', () => {
+  describe('with real mock tokens', () => {
 
     beforeEach(async () => {
-      await provideReward(rewardAmount);
-      await approveFunds(aliceAmount, bobAmount);
-      await stakeFunds(aliceAmount, bobAmount);
-    });
-
-    it('should get staked total supply', async () => {
-      expect(await incentivizer.totalSupply()).to.be.bignumber.equal(totalSupply);
-    });
-
-    it('should get staked balance', async () => {
-      expect(await incentivizer.balanceOf(alice, {from: alice})).to.be.bignumber.equal(aliceAmount);
-    });
-
-    it('should get last time reward applicable', async () => {
-      const currentTime = await time.latest();
-      const periodFinish = await incentivizer.periodFinish();
-      expect(await incentivizer.lastTimeRewardApplicable()).to.be.bignumber.equal(currentTime);
-      await increaseTimeToStakingsEnd();
-      expect(await incentivizer.lastTimeRewardApplicable()).to.be.bignumber.equal(periodFinish);
-    });
-
-    it('should get reward per token', async () => {
-      const rewardPerTokenStored = await incentivizer.rewardPerTokenStored();
-      const lastTimeRewardApplicable = await incentivizer.lastTimeRewardApplicable();
-      const lastUpdateTime = await incentivizer.lastUpdateTime();
-      const rewardRate = await incentivizer.rewardRate();
-      const totalSupply = await incentivizer.totalSupply();
-
-      var expected = rewardPerTokenStored.add(
-        lastTimeRewardApplicable.sub(lastUpdateTime)
-          .mul(rewardRate).mul(ether('1')).div(totalSupply)
+      incentivizer = await Incentivizer.new();
+      stakingToken = await getMockTokenPrepared(
+        bob,
+        stakingTokenAmountToTransfer,
+        stakingTokenTotalSupply,
+        alice
+      );
+      rewardsToken = await getMockTokenPrepared(
+        rewardsDistribution,
+        rewardsTokenAmountToTransfer,
+        rewardsTokenTotalSupply,
+        rewardsDistribution
       );
 
-      expect(await incentivizer.rewardPerToken()).to.be.bignumber.equal(expected);
+      await incentivizer.configure(
+        rewardsDistribution,
+        rewardsToken.address,
+        stakingToken.address,
+        rewardsDuration
+      );
 
-      await increaseTimeToStakingsEnd();
-      await withdrawFunds(aliceAmount, bobAmount);
-
-      expected = await incentivizer.rewardPerTokenStored();
-      expect(await incentivizer.rewardPerToken()).to.be.bignumber.equal(expected);
     });
 
-    it('should get earned tokens amount', async () => {
-      const rewardPerToken = await incentivizer.rewardPerToken();
-      const userRewardPerTokenPaid = await incentivizer.userRewardPerTokenPaid(alice);
-      const rewards = await incentivizer.rewards(alice);
-      const balance = await incentivizer.balanceOf(alice);
-      const expected = balance.mul(rewardPerToken.sub(userRewardPerTokenPaid))
-        .div(ether('1')).add(rewards);
-      expect(await incentivizer.earned(alice)).to.be.bignumber.equal(expected);
+    it('should configure properly', async () => {
+      expect(await incentivizer.rewardsToken()).to.be.equal(rewardsToken.address);
+      expect(await incentivizer.stakingToken()).to.be.equal(stakingToken.address);
+      expect(await incentivizer.rewardsDistribution()).to.be.equal(rewardsDistribution);
+      expect(await incentivizer.rewardsDuration()).to.be.bignumber.equal(rewardsDuration);
     });
 
-    it('should get reward for duration', async () => {
-      const rewardRate = await incentivizer.rewardRate();
-      const actualRewardsDuration = await incentivizer.rewardsDuration();
-      expect(await incentivizer.getRewardForDuration()).to.be.bignumber.equal(rewardRate.mul(actualRewardsDuration));
+    describe('views', () => {
+
+      beforeEach(async () => {
+        await provideReward(rewardAmount);
+        await approveFunds(aliceAmount, bobAmount);
+        await stakeFunds(aliceAmount, bobAmount);
+      });
+
+      it('should get staked total supply', async () => {
+        expect(await incentivizer.totalSupply()).to.be.bignumber.equal(totalSupply);
+      });
+
+      it('should get staked balance', async () => {
+        expect(await incentivizer.balanceOf(alice, {from: alice})).to.be.bignumber.equal(aliceAmount);
+      });
+
+      it('should get last time reward applicable', async () => {
+        const currentTime = await time.latest();
+        const periodFinish = await incentivizer.periodFinish();
+        expect(await incentivizer.lastTimeRewardApplicable()).to.be.bignumber.equal(currentTime);
+        await increaseTimeToStakingsEnd();
+        expect(await incentivizer.lastTimeRewardApplicable()).to.be.bignumber.equal(periodFinish);
+      });
+
+      it('should get reward per token', async () => {
+        const rewardPerTokenStored = await incentivizer.rewardPerTokenStored();
+        const lastTimeRewardApplicable = await incentivizer.lastTimeRewardApplicable();
+        const lastUpdateTime = await incentivizer.lastUpdateTime();
+        const rewardRate = await incentivizer.rewardRate();
+        const totalSupply = await incentivizer.totalSupply();
+
+        var expected = rewardPerTokenStored.add(
+          lastTimeRewardApplicable.sub(lastUpdateTime)
+            .mul(rewardRate).mul(ether('1')).div(totalSupply)
+        );
+
+        expect(await incentivizer.rewardPerToken()).to.be.bignumber.equal(expected);
+
+        await increaseTimeToStakingsEnd();
+        await withdrawFunds(aliceAmount, bobAmount);
+
+        expected = await incentivizer.rewardPerTokenStored();
+        expect(await incentivizer.rewardPerToken()).to.be.bignumber.equal(expected);
+      });
+
+      it('should get earned tokens amount', async () => {
+        const rewardPerToken = await incentivizer.rewardPerToken();
+        const userRewardPerTokenPaid = await incentivizer.userRewardPerTokenPaid(alice);
+        const rewards = await incentivizer.rewards(alice);
+        const balance = await incentivizer.balanceOf(alice);
+        const expected = balance.mul(rewardPerToken.sub(userRewardPerTokenPaid))
+          .div(ether('1')).add(rewards);
+        expect(await incentivizer.earned(alice)).to.be.bignumber.equal(expected);
+      });
+
+      it('should get reward for duration', async () => {
+        const rewardRate = await incentivizer.rewardRate();
+        const actualRewardsDuration = await incentivizer.rewardsDuration();
+        expect(await incentivizer.getRewardForDuration()).to.be.bignumber.equal(rewardRate.mul(actualRewardsDuration));
+      });
+
     });
 
+    describe('staking', () => {
+
+      var bobReceipt, aliceReceipt;
+
+      beforeEach(async () => {
+        await provideReward(rewardAmount);
+        await approveFunds(aliceAmount, bobAmount);
+      });
+
+      it('should emit Staked event', async () => {
+        [aliceReceipt, bobReceipt] = await stakeFunds(aliceAmount, bobAmount);
+        processEventArgs(bobReceipt, 'Staked', transfersEventCheck(bob, bobAmount));
+        processEventArgs(aliceReceipt, 'Staked', transfersEventCheck(alice, aliceAmount));
+      });
+
+      it('should reject if trying to stake zero', async () => {
+        expectRevert(stakeFundsOf(bob, ZERO), "stake0");
+      });
+
+    });
+
+    describe('withdrawing', () => {
+
+      var bobReceipt, aliceReceipt;
+
+      beforeEach(async () => {
+        await provideReward(rewardAmount);
+        await approveFunds(aliceAmount, bobAmount);
+        await stakeFunds(aliceAmount, bobAmount);
+      });
+
+      it('should emit Withdrawn event', async () => {
+        await increaseTimeToStakingsEnd();
+        [aliceReceipt, bobReceipt] = await withdrawFunds(aliceAmount, bobAmount);
+        processEventArgs(bobReceipt, 'Withdrawn', transfersEventCheck(bob, bobAmount));
+        processEventArgs(aliceReceipt, 'Withdrawn', transfersEventCheck(alice, aliceAmount));
+      });
+
+      it('should revert if withdrawing 0', async () => {
+        await increaseTimeToStakingsEnd();
+        expectRevert(withdrawFundsOf(bob, ZERO), "withdraw0");
+      });
+
+      it('should revert if staking is not stopeed', async () => {
+        expectRevert(withdrawFundsOf(bob, bobAmount), "notFinished");
+      });
+    });
+
+    describe('rewards management without mock contract', () => {
+
+      var receipt;
+
+      it('should calculate reward rate properly', async () => {
+        
+      });
+
+      it('should revert if msg.sender is not in rewards distribution role', async () => {
+        await rewardsToken.approve(bob, rewardAmount, {from: rewardsDistribution});
+        await rewardsToken.transfer(bob, rewardAmount, {from: rewardsDistribution});
+        expectRevert(provideReward(rewardAmount, bob), "!rewardsDistribution");
+      });
+
+      it('should emit RewardAdded event', async () => {
+        receipt = await provideReward(rewardAmount);
+        processEventArgs(receipt, 'RewardAdded', (args) => {
+          expect(args.reward).to.be.bignumber.equal(rewardAmount);
+        });
+      });
+
+      it('should initialize time interval', async () => {
+        await provideReward(rewardAmount);
+        expect(await incentivizer.lastUpdateTime()).to.be.bignumber.equal(
+          await time.latest()
+        );
+        expect(await incentivizer.periodFinish()).to.be.bignumber.equal(
+          (await time.latest()).add(await incentivizer.rewardsDuration())
+        );
+      });
+    });
   });
 
-  describe('staking', () => {
+  describe('rewards management with mock contract', () => {
 
-    var bobReceipt, aliceReceipt;
+    var receipt;
 
     beforeEach(async () => {
-      await provideReward(rewardAmount);
-      await approveFunds(aliceAmount, bobAmount);
+      incentivizer = await Incentivizer.new();
+      rewardsToken = await MockContract.new();
+      stakingToken = rewardsToken;
+      await incentivizer.configure(
+        rewardsDistribution,
+        rewardsToken.address,
+        stakingToken.address,
+        rewardsDuration
+      );
     });
 
-    it('should emit Staked event', async () => {
-      [aliceReceipt, bobReceipt] = await stakeFunds(aliceAmount, bobAmount);
-      processEventArgs(bobReceipt, 'Staked', transfersEventCheck(bob, bobAmount));
-      processEventArgs(aliceReceipt, 'Staked', transfersEventCheck(alice, aliceAmount));
+    it('should revert if reward rate lt its intended to be', async () => {
+      const balanceOfCalldata = (await IERC20.at(rewardsToken.address)).contract
+        .methods.balanceOf(ZERO_ADDRESS).encodeABI();
+      await rewardsToken.givenMethodReturnUint(balanceOfCalldata, ether('10'));
+      expectRevert(incentivizer.notifyRewardAmount(rewardAmount, {from: rewardsDistribution}),
+        "tooHighReward");
     });
-
-    it('should reject if trying to stake zero', async () => {
-      expectRevert(stakeFundsOf(bob, ZERO), "stake0");
-    });
-
-  });
-
-  describe('withdrawing', () => {
-
-    var bobReceipt, aliceReceipt;
-
-    beforeEach(async () => {
-      await provideReward(rewardAmount);
-      await approveFunds(aliceAmount, bobAmount);
-      await stakeFunds(aliceAmount, bobAmount);
-    });
-
-    it('should emit Withdrawn event', async () => {
-      await increaseTimeToStakingsEnd();
-      [aliceReceipt, bobReceipt] = await withdrawFunds(aliceAmount, bobAmount);
-      processEventArgs(bobReceipt, 'Withdrawn', transfersEventCheck(bob, bobAmount));
-      processEventArgs(aliceReceipt, 'Withdrawn', transfersEventCheck(alice, aliceAmount));
-    });
-
-    it('should revert if withdrawing 0', async () => {
-      await increaseTimeToStakingsEnd();
-      expectRevert(withdrawFundsOf(bob, ZERO), "withdraw0");
-    });
-
-    it('should revert if staking is not stopeed', async () => {
-      expectRevert(withdrawFundsOf(bob, bobAmount), "notFinished");
-    });
-  });
-
-  describe('rewards movement', () => {
 
   });
 
