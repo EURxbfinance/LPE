@@ -56,7 +56,7 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
         _;
     }
 
-    modifier whileStaking() {
+    modifier whileStakingStopped() {
         require(block.timestamp >= periodFinish, 'notFinished');
         _;
     }
@@ -117,7 +117,7 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
     function setRewardsDuration(uint256 _rewardsDuration)
         external
         onlyOwner
-        whileStaking
+        whileStakingStopped
     {
         rewardsDuration = _rewardsDuration;
     }
@@ -139,7 +139,7 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
         public
         override
         nonReentrant
-        whileStaking
+        whileStakingStopped
         aboveZero(amount, "withdraw0")
         updateReward(msg.sender)
     {

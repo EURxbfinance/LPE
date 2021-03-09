@@ -16,11 +16,6 @@ const { ZERO, ONE, getMockTokenPrepared, processEventArgs } = require('./utils/c
 const Incentivizer = artifacts.require('Incentivizer');
 const IERC20 = artifacts.require('IERC20');
 
-// const IUniswapV2Router02 = artifacts.require('IUniswapV2Router02');
-// const IUniswapV2Pair = artifacts.require('IUniswapV2Pair');
-// const UniswapV2Factory = artifacts.require('UniswapV2Factory');
-// const UniswapV2Library = artifacts.require('UniswapV2Library');
-
 const MockContract = artifacts.require("MockContract");
 
 contract('Incentivizer', (accounts) => {
@@ -45,6 +40,34 @@ contract('Incentivizer', (accounts) => {
   var incentivizer;
   var stakingToken;
   var rewardsToken;
+
+  const approveFunds = async (aliceAmount, bobAmount) => {
+    await stakingToken.approve(incentivizer.address, aliceAmount, {from: alice});
+    await stakingToken.approve(incentivizer.address, bobAmount, {from: bob});
+  };
+
+  const stakeFunds = async (aliceAmount, bobAmount) => {
+    const bobReceipt = await incentivizer.stake(bobAmount, {from: bob});
+    const aliceReceipt = await incentivizer.stake(aliceAmount, {from: alice});
+    return [aliceReceipt, bobReceipt];
+  };
+
+  const withdrawFunds = async (aliceAmount, bobAmount) => {
+    const bobReceipt = await incentivizer.withdraw(bobAmount, {from: bob});
+    const aliceReceipt = await incentivizer.withdraw(aliceAmount, {from: alice});
+    return [aliceReceipt, bobReceipt];
+  };
+
+  const provideReward = async (rewardAmount) => {
+    await rewardsToken.approve(incentivizer.address, rewardAmount, {from: rewardsDistribution});
+    await rewardsToken.transfer(incentivizer.address, rewardAmount, {from: rewardsDistribution});
+    return await incentivizer.notifyRewardAmount(rewardAmount, {from: rewardsDistribution});
+  };
+
+  const increaseTimeToStakingsEnd = async () => {
+    const timeOffset = new BN('3600'); // 1 hour
+    await time.increase(rewardsDuration.add(timeOffset));
+  };
 
   beforeEach(async () => {
     incentivizer = await Incentivizer.new();
@@ -76,23 +99,6 @@ contract('Incentivizer', (accounts) => {
     expect(await incentivizer.rewardsDistribution()).to.be.equal(rewardsDistribution);
     expect(await incentivizer.rewardsDuration()).to.be.bignumber.equal(rewardsDuration);
   });
-
-  const approveFunds = async (aliceAmount, bobAmount) => {
-    await stakingToken.approve(incentivizer.address, aliceAmount, {from: alice});
-    await stakingToken.approve(incentivizer.address, bobAmount, {from: bob});
-  };
-
-  const stakeFunds = async (aliceAmount, bobAmount) => {
-    const bobReceipt = await incentivizer.stake(bobAmount, {from: bob});
-    const aliceReceipt = await incentivizer.stake(aliceAmount, {from: alice});
-    return [aliceReceipt, bobReceipt];
-  };
-
-  const provideReward = async (rewardAmount) => {
-    await rewardsToken.approve(incentivizer.address, rewardAmount, {from: rewardsDistribution});
-    await rewardsToken.transfer(incentivizer.address, rewardAmount, {from: rewardsDistribution});
-    return await incentivizer.notifyRewardAmount(rewardAmount, {from: rewardsDistribution});
-  };
 
   describe('views', () => {
 
@@ -130,8 +136,7 @@ contract('Incentivizer', (accounts) => {
       const currentTime = await time.latest();
       const periodFinish = await incentivizer.periodFinish();
       expect(await incentivizer.lastTimeRewardApplicable()).to.be.bignumber.equal(currentTime);
-      const hour = new BN('3600');
-      await time.increase(rewardsDuration.add(hour));
+      await increaseTimeToStakingsEnd();
       expect(await incentivizer.lastTimeRewardApplicable()).to.be.bignumber.equal(periodFinish);
     });
 
@@ -141,15 +146,48 @@ contract('Incentivizer', (accounts) => {
       const lastUpdateTime = await incentivizer.lastUpdateTime();
       const rewardRate = await incentivizer.rewardRate();
       const totalSupply = await incentivizer.totalSupply();
+
+      var expected = rewardPerTokenStored.add(
+        lastTimeRewardApplicable.sub(lastUpdateTime)
+          .mul(rewardRate).mul(ether('1')).div(totalSupply)
+      );
+
+      expect(await incentivizer.rewardPerToken()).to.be.bignumber.equal(expected);
+
+      await increaseTimeToStakingsEnd();
+      await withdrawFunds(aliceAmount, bobAmount);
+
+      expected = await incentivizer.rewardPerTokenStored();
+      expect(await incentivizer.rewardPerToken()).to.be.bignumber.equal(expected);
     });
 
     it('should get earned tokens amount', async () => {
-
+      const rewardPerToken = await incentivizer.rewardPerToken();
+      const userRewardPerTokenPaid = await incentivizer.userRewardPerTokenPaid(alice);
+      const rewards = await incentivizer.rewards(alice);
+      const balance = await incentivizer.balanceOf(alice);
+      const expected = balance.mul(rewardPerToken.sub(userRewardPerTokenPaid))
+        .div(ether('1')).add(rewards);
+      expect(await incentivizer.earned(alice)).to.be.bignumber.equal(expected);
     });
 
     it('should get reward for duration', async () => {
-
+      const rewardRate = await incentivizer.rewardRate();
+      const actualRewardsDuration = await incentivizer.rewardsDuration();
+      expect(await incentivizer.getRewardForDuration()).to.be.bignumber.equal(rewardRate.mul(actualRewardsDuration));
     });
+
+  });
+
+  describe('staking', () => {
+
+  });
+
+  describe('withdrawing', () => {
+
+  });
+
+  describe('rewards movement', () => {
 
   });
 
