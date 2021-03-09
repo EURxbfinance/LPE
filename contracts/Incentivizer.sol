@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Initializable.sol";
@@ -18,7 +17,7 @@ import "./interfaces/IStakingRewards.sol";
 import "./libraries/UniswapV2Library.sol";
 
 
-contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient, ReentrancyGuard {
+contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient, ReentrancyGuard, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -26,9 +25,9 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
 
     IERC20 public rewardsToken;
     IERC20 public stakingToken;
-    uint256 public periodFinish = 0;
-    uint256 public rewardRate = 0;
-    uint256 public rewardsDuration = 0;
+    uint256 public periodFinish;
+    uint256 public rewardRate;
+    uint256 public rewardsDuration;
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
 
@@ -57,6 +56,16 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
         _;
     }
 
+    modifier whileStaking() {
+        require(block.timestamp >= periodFinish, 'notFinished');
+        _;
+    }
+
+    modifier aboveZero(uint256 value, string memory message) {
+        require(value > 0, message);
+        _;
+    }
+
     /* ========== INITIALIZER ========== */
 
     function configure(
@@ -64,7 +73,7 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
         address _rewardsToken,
         address _stakingToken,
         uint256 _rewardsDuration
-    ) external {
+    ) external initializer {
         rewardsToken = IERC20(_rewardsToken);
         stakingToken = IERC20(_stakingToken);
         rewardsDistribution = _rewardsDistribution;
@@ -105,29 +114,47 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
-        require(block.timestamp >= periodFinish, 'staking is running');
+    function setRewardsDuration(uint256 _rewardsDuration)
+        external
+        onlyOwner
+        whileStaking
+    {
         rewardsDuration = _rewardsDuration;
     }
 
-    function stake(uint256 amount) external override nonReentrant updateReward(msg.sender) {
-        require(amount > 0, "Cannot stake 0");
+    function stake(uint256 amount)
+        external
+        override
+        nonReentrant
+        aboveZero(amount, "stake0")
+        updateReward(msg.sender)
+    {
         _totalSupply = _totalSupply.add(amount);
         _balances[msg.sender] = _balances[msg.sender].add(amount);
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
         emit Staked(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) public override nonReentrant updateReward(msg.sender) {
-        require(amount > 0, "Cannot withdraw 0");
-        require(block.timestamp >= periodFinish, 'staking is not finished');
+    function withdraw(uint256 amount)
+        public
+        override
+        nonReentrant
+        whileStaking
+        aboveZero(amount, "withdraw0")
+        updateReward(msg.sender)
+    {
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
         stakingToken.safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, amount);
     }
 
-    function getReward() public override nonReentrant updateReward(msg.sender) {
+    function getReward()
+        public
+        override
+        nonReentrant
+        updateReward(msg.sender)
+    {
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
@@ -143,7 +170,12 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function notifyRewardAmount(uint256 reward) external override onlyRewardsDistribution updateReward(address(0)) {
+    function notifyRewardAmount(uint256 reward)
+        external
+        override
+        onlyRewardsDistribution
+        updateReward(address(0))
+    {
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(rewardsDuration);
         } else {
@@ -157,7 +189,7 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
         // very high values of rewardRate in the earned and rewardsPerToken functions;
         // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
         uint balance = rewardsToken.balanceOf(address(this));
-        require(rewardRate <= balance.div(rewardsDuration), "Provided reward too high");
+        require(rewardRate <= balance.div(rewardsDuration), "tooHighReward");
 
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp.add(rewardsDuration);
