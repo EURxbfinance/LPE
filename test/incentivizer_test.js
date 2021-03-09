@@ -260,14 +260,13 @@ contract('Incentivizer', (accounts) => {
         await time.increase(rewardsDuration.sub(new BN('3600')));
         await stakeFunds(aliceAmount.div(new BN('2')), bobAmount.div(new BN('2')));
 
-        rewardToPay = await incentivizer.rewards(bob);
+        rewardToPay = await incentivizer.earned(bob);
         receipt = await incentivizer.getReward({from: bob});
       });
 
       it('should emit RewardPaid event', async () => {
         processEventArgs(receipt, 'RewardPaid', (args) => {
           expect(args.user).to.be.equal(bob);
-          console.log(args.reward.toString(), rewardToPay.toString());
           expect(args.reward).to.be.bignumber.equal(rewardToPay);
         });
       });
