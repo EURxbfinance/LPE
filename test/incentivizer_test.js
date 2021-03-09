@@ -206,12 +206,12 @@ contract('Incentivizer', (accounts) => {
       });
 
       it('should reject if trying to stake zero', async () => {
-        expectRevert(stakeFundsOf(bob, ZERO), "stake0");
+        await expectRevert(stakeFundsOf(bob, ZERO), "stake0");
       });
 
     });
 
-    describe('withdrawing', () => {
+    describe('withdrawing and setters', () => {
 
       var bobReceipt, aliceReceipt;
 
@@ -230,30 +230,86 @@ contract('Incentivizer', (accounts) => {
 
       it('should revert if withdrawing 0', async () => {
         await increaseTimeToStakingsEnd();
-        expectRevert(withdrawFundsOf(bob, ZERO), "withdraw0");
+        await expectRevert(withdrawFundsOf(bob, ZERO), "withdraw0");
       });
 
       it('should revert if staking is not stopeed', async () => {
-        expectRevert(withdrawFundsOf(bob, bobAmount), "notFinished");
+        await expectRevert(withdrawFundsOf(bob, bobAmount), "notFinished");
       });
+
+      it('should set rewards duration when staking stopped', async () => {
+        await increaseTimeToStakingsEnd();
+        await incentivizer.setRewardsDuration(ZERO);
+        expect(await incentivizer.rewardsDuration()).to.be.bignumber.equal(ZERO);
+      });
+
+      it('should revert setting rewards duration if staking is not stopped', async () => {
+        await expectRevert(incentivizer.setRewardsDuration(ZERO), "notFinished");
+      });
+    });
+
+    describe('getting rewards', () => {
+
+      var receipt;
+      var rewardToPay;
+
+      beforeEach(async () => {
+        await provideReward(rewardAmount);
+        await approveFunds(aliceAmount, bobAmount);
+        await stakeFunds(aliceAmount.div(new BN('2')), bobAmount.div(new BN('2')));
+        await time.increase(rewardsDuration.sub(new BN('3600')));
+        await stakeFunds(aliceAmount.div(new BN('2')), bobAmount.div(new BN('2')));
+
+        rewardToPay = await incentivizer.rewards(bob);
+        receipt = await incentivizer.getReward({from: bob});
+      });
+
+      it('should emit RewardPaid event', async () => {
+        processEventArgs(receipt, 'RewardPaid', (args) => {
+          expect(args.user).to.be.equal(bob);
+          console.log(args.reward.toString(), rewardToPay.toString());
+          expect(args.reward).to.be.bignumber.equal(rewardToPay);
+        });
+      });
+
+      it('should transfer rewards', async () => {
+        expect(await rewardsToken.balanceOf(bob)).to.be.bignumber.equal(rewardToPay);
+      });
+
     });
 
     describe('rewards management without mock contract', () => {
 
-      var receipt;
+      it('should calculate reward rate properly when notify reward amount', async () => {
 
-      it('should calculate reward rate properly', async () => {
-        
+        await provideReward(rewardAmount);
+
+        const actualRewardsDuration = await incentivizer.rewardsDuration();
+
+        var expected = rewardAmount.div(actualRewardsDuration);
+        expect(await incentivizer.rewardRate()).to.be.bignumber.equal(expected);
+
+        await time.increase(rewardsDuration);
+
+        const currentTime = await time.latest();
+        const oldRewardRate = await incentivizer.rewardRate();
+        const periodFinish = await incentivizer.periodFinish();
+        const remaining = periodFinish.sub(currentTime);
+        const leftover = remaining.mul(oldRewardRate);
+        expected = rewardAmount.add(leftover).div(actualRewardsDuration);
+
+        expect(await incentivizer.rewardRate()).to.be.bignumber.equal(expected);
+
       });
 
       it('should revert if msg.sender is not in rewards distribution role', async () => {
         await rewardsToken.approve(bob, rewardAmount, {from: rewardsDistribution});
         await rewardsToken.transfer(bob, rewardAmount, {from: rewardsDistribution});
-        expectRevert(provideReward(rewardAmount, bob), "!rewardsDistribution");
+        await expectRevert(provideReward(rewardAmount, bob), "!rewardsDistribution");
       });
 
       it('should emit RewardAdded event', async () => {
-        receipt = await provideReward(rewardAmount);
+        const receipt = await provideReward(rewardAmount);
         processEventArgs(receipt, 'RewardAdded', (args) => {
           expect(args.reward).to.be.bignumber.equal(rewardAmount);
         });
@@ -291,7 +347,7 @@ contract('Incentivizer', (accounts) => {
       const balanceOfCalldata = (await IERC20.at(rewardsToken.address)).contract
         .methods.balanceOf(ZERO_ADDRESS).encodeABI();
       await rewardsToken.givenMethodReturnUint(balanceOfCalldata, ether('10'));
-      expectRevert(incentivizer.notifyRewardAmount(rewardAmount, {from: rewardsDistribution}),
+      await expectRevert(incentivizer.notifyRewardAmount(rewardAmount, {from: rewardsDistribution}),
         "tooHighReward");
     });
 
