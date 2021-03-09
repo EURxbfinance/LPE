@@ -64,7 +64,7 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
         address _rewardsToken,
         address _stakingToken,
         uint256 _rewardsDuration
-    ) ReentrancyGuard() {
+    ) external {
         rewardsToken = IERC20(_rewardsToken);
         stakingToken = IERC20(_stakingToken);
         rewardsDistribution = _rewardsDistribution;
@@ -108,18 +108,6 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
     function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
         require(block.timestamp >= periodFinish, 'staking is running');
         rewardsDuration = _rewardsDuration;
-    }
-
-    function stakeWithPermit(uint256 amount, uint deadline, uint8 v, bytes32 r, bytes32 s) external nonReentrant updateReward(msg.sender) {
-        require(amount > 0, "Cannot stake 0");
-        _totalSupply = _totalSupply.add(amount);
-        _balances[msg.sender] = _balances[msg.sender].add(amount);
-
-        // permit
-        IUniswapV2ERC20(address(stakingToken)).permit(msg.sender, address(this), amount, deadline, v, r, s);
-
-        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit Staked(msg.sender, amount);
     }
 
     function stake(uint256 amount) external override nonReentrant updateReward(msg.sender) {
