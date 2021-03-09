@@ -27,8 +27,8 @@ contract('Incentivizer', (accounts) => {
 
   const stakingTokenTotalSupply = ether('1000');
   const rewardsTokenTotalSupply = ether('1000');
-  const stakingTokenAmount = ether('500');
-  const rewardsTokenAmount = ZERO;
+  const stakingTokenAmountToTransfer = ether('500');
+  const rewardsTokenAmountToTransfer = ZERO;
 
   const days = new BN('20');
   const rewardsDuration =
@@ -41,20 +41,37 @@ contract('Incentivizer', (accounts) => {
   var stakingToken;
   var rewardsToken;
 
+  const aliceAmount = ether('10');
+  const bobAmount = ether('10');
+  const totalSupply = aliceAmount.add(bobAmount);
+  const rewardAmount = ether('100');
+
   const approveFunds = async (aliceAmount, bobAmount) => {
     await stakingToken.approve(incentivizer.address, aliceAmount, {from: alice});
     await stakingToken.approve(incentivizer.address, bobAmount, {from: bob});
   };
 
+  const transferFundsOf = async (user, userAmount, operation) => {
+    return await incentivizer.methods[operation](userAmount, {from: user});
+  };
+
+  const stakeFundsOf = async (user, userAmount) => {
+    return await transferFundsOf(user, userAmount, "stake(uint256)");
+  };
+
+  const withdrawFundsOf = async (user, userAmount) => {
+    return await transferFundsOf(user, userAmount, "withdraw(uint256)");;
+  };
+
   const stakeFunds = async (aliceAmount, bobAmount) => {
-    const bobReceipt = await incentivizer.stake(bobAmount, {from: bob});
-    const aliceReceipt = await incentivizer.stake(aliceAmount, {from: alice});
+    const bobReceipt = await stakeFundsOf(bob, bobAmount);
+    const aliceReceipt = await stakeFundsOf(alice, aliceAmount);
     return [aliceReceipt, bobReceipt];
   };
 
   const withdrawFunds = async (aliceAmount, bobAmount) => {
-    const bobReceipt = await incentivizer.withdraw(bobAmount, {from: bob});
-    const aliceReceipt = await incentivizer.withdraw(aliceAmount, {from: alice});
+    const bobReceipt = await withdrawFundsOf(bob, bobAmount);
+    const aliceReceipt = await withdrawFundsOf(alice, aliceAmount);;
     return [aliceReceipt, bobReceipt];
   };
 
@@ -69,17 +86,24 @@ contract('Incentivizer', (accounts) => {
     await time.increase(rewardsDuration.add(timeOffset));
   };
 
+  const transfersEventCheck = (user, userAmount) => {
+    return (args) => {
+      expect(args.amount).to.be.bignumber.equal(userAmount);
+      expect(args.user).to.be.equal(user);
+    };
+  };
+
   beforeEach(async () => {
     incentivizer = await Incentivizer.new();
     stakingToken = await getMockTokenPrepared(
       bob,
-      stakingTokenAmount,
+      stakingTokenAmountToTransfer,
       stakingTokenTotalSupply,
       alice
     );
     rewardsToken = await getMockTokenPrepared(
       rewardsDistribution,
-      rewardsTokenAmount,
+      rewardsTokenAmountToTransfer,
       rewardsTokenTotalSupply,
       rewardsDistribution
     );
@@ -102,26 +126,10 @@ contract('Incentivizer', (accounts) => {
 
   describe('views', () => {
 
-    const aliceAmount = ether('10');
-    const bobAmount = ether('10');
-    const totalSupply = aliceAmount.add(bobAmount);
-    const rewardAmount = ether('100');
-
     beforeEach(async () => {
       await provideReward(rewardAmount);
       await approveFunds(aliceAmount, bobAmount);
       await stakeFunds(aliceAmount, bobAmount);
-
-      // var [bobReceipt, aliceReceipt] = await stakeFunds(aliceAmount, bobAmount);
-      // processEventArgs(bobReceipt, 'Staked', (args) => {
-      //   console.log(args.amount.toString());
-      // });
-      //
-      // processEventArgs(aliceReceipt, 'Staked', (args) => {
-      //   console.log(args.amount.toString());
-      // });
-      //
-      // console.log((await incentivizer.totalSupply()).toString());
     });
 
     it('should get staked total supply', async () => {
@@ -181,10 +189,50 @@ contract('Incentivizer', (accounts) => {
 
   describe('staking', () => {
 
+    var bobReceipt, aliceReceipt;
+
+    beforeEach(async () => {
+      await provideReward(rewardAmount);
+      await approveFunds(aliceAmount, bobAmount);
+    });
+
+    it('should emit Staked event', async () => {
+      [aliceReceipt, bobReceipt] = await stakeFunds(aliceAmount, bobAmount);
+      processEventArgs(bobReceipt, 'Staked', transfersEventCheck(bob, bobAmount));
+      processEventArgs(aliceReceipt, 'Staked', transfersEventCheck(alice, aliceAmount));
+    });
+
+    it('should reject if trying to stake zero', async () => {
+      expectRevert(stakeFundsOf(bob, ZERO), "stake0");
+    });
+
   });
 
   describe('withdrawing', () => {
 
+    var bobReceipt, aliceReceipt;
+
+    beforeEach(async () => {
+      await provideReward(rewardAmount);
+      await approveFunds(aliceAmount, bobAmount);
+      await stakeFunds(aliceAmount, bobAmount);
+    });
+
+    it('should emit Withdrawn event', async () => {
+      await increaseTimeToStakingsEnd();
+      [aliceReceipt, bobReceipt] = await withdrawFunds(aliceAmount, bobAmount);
+      processEventArgs(bobReceipt, 'Withdrawn', transfersEventCheck(bob, bobAmount));
+      processEventArgs(aliceReceipt, 'Withdrawn', transfersEventCheck(alice, aliceAmount));
+    });
+
+    it('should revert if withdrawing 0', async () => {
+      await increaseTimeToStakingsEnd();
+      expectRevert(withdrawFundsOf(bob, ZERO), "withdraw0");
+    });
+
+    it('should revert if staking is not stopeed', async () => {
+      expectRevert(withdrawFundsOf(bob, bobAmount), "notFinished");
+    });
   });
 
   describe('rewards movement', () => {
