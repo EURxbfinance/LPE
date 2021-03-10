@@ -264,14 +264,11 @@ contract('Incentivizer', (accounts) => {
         receipt = await incentivizer.getReward({from: bob});
       });
 
-      it('should emit RewardPaid event', async () => {
+      it('should emit RewardPaid event and transfer rewards', async () => {
         processEventArgs(receipt, 'RewardPaid', (args) => {
           expect(args.user).to.be.equal(bob);
           expect(args.reward).to.be.bignumber.equal(rewardToPay);
         });
-      });
-
-      it('should transfer rewards', async () => {
         expect(await rewardsToken.balanceOf(bob)).to.be.bignumber.equal(rewardToPay);
       });
 
