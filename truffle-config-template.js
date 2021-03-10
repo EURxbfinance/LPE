@@ -31,8 +31,18 @@ const rinkebyNetworkConfig = {
   gasLimit: 5000000,
   from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
   websockets: true,
-  confirmations: 2,
   gasPrice: 25000000000,
+};
+
+const mainnetNetworkConfig = {
+  provider: () => new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/${process.env.INFURA_ID}`),
+  network_id: 4, // Rinkeby's id
+  networkCheckTimeout: 10000000,
+  gasLimit: 5000000,
+  from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
+  websockets: true,
+  confirmations: 2,
+  gasPrice: 125000000000,
 };
 
 module.exports = {
@@ -66,11 +76,8 @@ module.exports = {
     // },
     // Useful for deploying to a public network.
     rinkeby: rinkebyNetworkConfig,
+    mainnet: mainnetNetworkConfig,
 
-    // Use this network for part one of the deployment with free infura.
-    rinkeby_part_one: rinkebyNetworkConfig,
-    // Use this network for part two of the deployment with free infura.
-    rinkeby_part_two: rinkebyNetworkConfig
 
     // Useful for private networks
     // private: {
@@ -84,7 +91,7 @@ module.exports = {
   mocha: {
     reporter: 'eth-gas-reporter',
     gasReporter: { 'gasPrice': 1 },
-    timeout: 20000000
+    timeout: 20000000,
   },
 
   api_keys: {

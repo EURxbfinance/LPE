@@ -10,6 +10,7 @@
     "build": "bash ./scripts/build.sh",
     "test": "bash ./scripts/test.sh",
     "deploy": "bash ./scripts/deploy.sh",
+    "verify": "bash ./scripts/verify.sh",
     "flatten": "bash ./scripts/flatten.sh"
   },
   "keywords": [],
