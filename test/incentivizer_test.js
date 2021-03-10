@@ -266,9 +266,6 @@ contract('Incentivizer', (accounts) => {
 
         await stakeFundsOf(bob, bobAmount.div(new BN('2')));
 
-        // don't know but this produces wrong amount of reward just uncomment and see
-        // await time.increase(rewardsDuration.sub(new BN('3600')));
-
         await time.increase(new BN('3600'));
         await stakeFundsOf(bob, bobAmount.div(new BN('2')));
         receipt = await incentivizer.getReward({from: bob});
@@ -287,34 +284,16 @@ contract('Incentivizer', (accounts) => {
     describe('rewards management without mock contract', () => {
 
       it('should calculate reward rate properly when notify reward amount at start', async () => {
-
         await provideReward(rewardAmount);
-
         const actualRewardsDuration = await incentivizer.rewardsDuration();
-
         var expected = rewardAmount.div(actualRewardsDuration);
         expect(await incentivizer.rewardRate()).to.be.bignumber.equal(expected);
-
-        // await time.increase(rewardsDuration);
-        //
-        // const currentTime = await time.latest();
-        // const oldRewardRate = await incentivizer.rewardRate();
-        // const periodFinish = await incentivizer.periodFinish();
-        // const remaining = periodFinish.sub(currentTime);
-        // const leftover = remaining.mul(oldRewardRate);
-        // expected = rewardAmount.add(leftover).div(actualRewardsDuration);
-        //
-        // expect(await incentivizer.rewardRate()).to.be.bignumber.equal(expected);
-
       });
 
       it('should calculate reward rate properly when notify reward amount in process', async () => {
-
         const rewardPart = rewardAmount.div(new BN('2'));
         await provideReward(rewardPart);
         await time.increase(new BN('3600'));
-
-
 
         const currentTime = await time.latest();
         const actualRewardsDuration = await incentivizer.rewardsDuration();
@@ -324,7 +303,6 @@ contract('Incentivizer', (accounts) => {
         const remaining = periodFinish.sub(currentTime);
         const leftover = remaining.mul(oldRewardRate);
         const expectedRate = rewardPart.add(leftover).div(actualRewardsDuration);
-
 
         await provideReward(rewardPart);
 
@@ -341,9 +319,9 @@ contract('Incentivizer', (accounts) => {
         // console.log('---');
 
         const actualRate = await incentivizer.rewardRate();
-        // it and error that created by difference in block.timestamp and currentTime in 1 second
+        // its an error that created by difference in block.timestamp and currentTime in 1 second
         const oneSecondError = new BN('837245');
-        expect(actualRate.sub(expectedRate).abs()).to.be.bignumber.below(oneSecondError)
+        expect(actualRate.sub(expectedRate).abs()).to.be.bignumber.at.most(oneSecondError)
       });
 
       it('should revert if msg.sender is not in rewards distribution role', async () => {
