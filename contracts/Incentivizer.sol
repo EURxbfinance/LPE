@@ -170,6 +170,17 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
+    event Touch(
+      uint256 periodFinish,
+      uint256 currentTime,
+      uint256 remaining,
+      uint256 oldRewardRate,
+      uint256 leftover,
+      uint256 reward,
+      uint256 rewardsDuration,
+      uint256 rewardRate
+    );
+
     function notifyRewardAmount(uint256 reward)
         external
         override
@@ -180,8 +191,23 @@ contract Incentivizer is IStakingRewards, Ownable, RewardsDistributionRecipient,
             rewardRate = reward.div(rewardsDuration);
         } else {
             uint256 remaining = periodFinish.sub(block.timestamp);
+
+            uint256 oldRewardRate = rewardRate;
+
             uint256 leftover = remaining.mul(rewardRate);
             rewardRate = reward.add(leftover).div(rewardsDuration);
+
+            emit Touch(
+              periodFinish,
+              block.timestamp,
+              remaining,
+              oldRewardRate,
+              leftover,
+              reward,
+              rewardsDuration,
+              rewardRate
+            );
+            
         }
 
         // Ensure the provided reward amount is not more than the balance in the contract.
