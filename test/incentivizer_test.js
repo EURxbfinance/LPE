@@ -260,22 +260,34 @@ contract('Incentivizer', (accounts) => {
       var receipt;
       var rewardToPay;
 
-      beforeEach(async () => {
-        await provideReward(rewardAmount);
-        await approveFunds(aliceAmount, bobAmount);
-
-        await stakeFundsOf(bob, bobAmount.div(new BN('2')));
-
-        await time.increase(new BN('3600'));
-        await stakeFundsOf(bob, bobAmount.div(new BN('2')));
-        receipt = await incentivizer.getReward({from: bob});
-      });
-
-      it('should emit RewardPaid event and transfer rewards', async () => {
+      const expectRewardPaidEventForBob = async () => {
         const balanceOfBob = await rewardsToken.balanceOf(bob);
         processEventArgs(receipt, 'RewardPaid', (args) => {
           expect(args.user).to.be.equal(bob);
           expect(args.reward).to.be.bignumber.equal(balanceOfBob);
+        });
+      };
+
+      beforeEach(async () => {
+        await provideReward(rewardAmount);
+        await approveFunds(aliceAmount, bobAmount);
+        await stakeFundsOf(bob, bobAmount.div(new BN('2')));
+        await time.increase(new BN('3600'));
+        await stakeFundsOf(bob, bobAmount.div(new BN('2')));
+      });
+
+      it('should emit RewardPaid event and transfer rewards', async () => {
+        receipt = await incentivizer.getReward({from: bob});
+        await expectRewardPaidEventForBob();
+      });
+
+      it('should allow user to exit properly', async () => {
+        await increaseTimeToStakingsEnd();
+        receipt = await incentivizer.exit({from: bob});
+        await expectRewardPaidEventForBob();
+        processEventArgs(receipt, 'Withdrawn', (args) => {
+          expect(args.user).to.be.equal(bob);
+          expect(args.amount).to.be.bignumber.equal(bobAmount);
         });
       });
 
