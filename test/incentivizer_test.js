@@ -281,6 +281,10 @@ contract('Incentivizer', (accounts) => {
         await expectRewardPaidEventForBob();
       });
 
+      it('should do nothing if reward is 0', async () => {
+        await incentivizer.getReward({from: alice});
+      });
+
       it('should allow user to exit properly', async () => {
         await increaseTimeToStakingsEnd();
         receipt = await incentivizer.exit({from: bob});

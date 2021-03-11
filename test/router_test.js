@@ -76,6 +76,12 @@ contract('Router', (accounts) => {
       expect(await router.token()).to.be.equal(mockToken.address);
     });
 
+    it('should set start weights', async () => {
+      await router.setStartWeights(ZERO, ZERO);
+      expect(await router.startWeightToken()).to.be.bignumber.equal(ZERO);
+      expect(await router.startWeightEurxb()).to.be.bignumber.equal(ZERO);
+    });
+
     it('should revert if already closed', async () => {
       await router.closeContract();
       await expectRevert(router.closeContract(), "closed");
@@ -118,11 +124,19 @@ contract('Router', (accounts) => {
   });
 
   const setUpReserves = async (reserve1, reserve2) => {
-    await mockToken.approve(mockPair.address, ether('100'), {from: bob});
-    await mockToken.transfer(mockPair.address, ether('100'), {from: bob});
-    await mockEurXBToken.approve(mockPair.address, ether('100'), {from: bob});
-    await mockEurXBToken.transfer(mockPair.address, ether('100'), {from: bob});
-    await mockPair.mint(bob, {from: bob});
+    if (!reserve1.eq(ZERO)) {
+      await mockToken.approve(mockPair.address, reserve1, {from: bob});
+      await mockToken.transfer(mockPair.address, reserve1, {from: bob});
+    }
+    if (!reserve2.eq(ZERO)) {
+      await mockEurXBToken.approve(mockPair.address, reserve2, {from: bob});
+      await mockEurXBToken.transfer(mockPair.address, reserve2, {from: bob});
+    }
+    if (!reserve1.eq(ZERO) || !reserve2.eq(ZERO)) {
+      await mockPair.mint(bob, {from: bob});
+    } else {
+      throw new Exception("Reserves are zero!");
+    }
   };
 
   describe('adding liquidity tests', () => {
@@ -153,6 +167,42 @@ contract('Router', (accounts) => {
       );
     });
 
+    it('should set up reserves with 0 amount', async () => {
+      // await setUpReserves(ZERO, ether('10'));
+      await router.setStartWeights(ether('100'), ether('100'));
+
+      const tenMinutes = new BN((60 * 10).toString());
+      const aliceTokenBalance = ether('10');
+      const eurxbToSend = ether('10');
+      await mockToken.approve(alice, aliceTokenBalance, {from: bob});
+      await mockToken.transfer(alice, aliceTokenBalance, {from: bob});
+
+      await mockEurXBToken.approve(router.address, eurxbToSend, {from: bob});
+      await mockEurXBToken.transfer(router.address, eurxbToSend, {from: bob});
+
+      await mockToken.approve(router.address, aliceTokenBalance, {from: alice});
+      const addLiquidityCalldata = (await IUniswapV2Router02.at(mockRouter.address)).contract
+        .methods.addLiquidity(
+          ZERO_ADDRESS,
+          ZERO_ADDRESS,
+          ZERO,
+          ZERO,
+          ZERO,
+          ZERO,
+          ZERO_ADDRESS,
+          ZERO
+        ).encodeABI();
+
+      await mockRouter.givenMethodReturn(addLiquidityCalldata,
+        web3.eth.abi.encodeParameters(
+          ["uint256", "uint256", "uint256"],
+          [ZERO, ZERO, ZERO]
+        )
+      );
+      await router.addLiquidity(aliceTokenBalance, tenMinutes, {from: alice});
+      expect(await mockToken.balanceOf(teamAddress)).to.be.bignumber.equal(ether('10'));
+    });
+
     it('should revert adding liquidity if balance eur lower than 1 token', async () => {
       await setUpReserves(ether('100'), ether('100'));
       const aliceTokenBalance = ether('10');
@@ -162,6 +212,43 @@ contract('Router', (accounts) => {
         router.addLiquidity(aliceTokenBalance, new BN((60 * 10).toString()), {from: alice}),
         "emptyEURxbBalance"
       );
+    });
+
+    it('should emit EmptyEURxbBalance if we don\'t have enough eurxb tokens', async () => {
+      await setUpReserves(ether('10'), ether('10'));
+      const tenMinutes = new BN((60 * 10).toString());
+      const aliceTokenBalance = ether('10');
+      const eurxbToSend = ether('1');
+      await mockToken.approve(alice, aliceTokenBalance, {from: bob});
+      await mockToken.transfer(alice, aliceTokenBalance, {from: bob});
+
+      await mockEurXBToken.approve(router.address, eurxbToSend, {from: bob});
+      await mockEurXBToken.transfer(router.address, eurxbToSend, {from: bob});
+
+      await mockToken.approve(router.address, aliceTokenBalance, {from: alice});
+      const addLiquidityCalldata = (await IUniswapV2Router02.at(mockRouter.address)).contract
+        .methods.addLiquidity(
+          ZERO_ADDRESS,
+          ZERO_ADDRESS,
+          ZERO,
+          ZERO,
+          ZERO,
+          ZERO,
+          ZERO_ADDRESS,
+          ZERO
+        ).encodeABI();
+
+      await mockRouter.givenMethodReturn(addLiquidityCalldata,
+        web3.eth.abi.encodeParameters(
+          ["uint256", "uint256", "uint256"],
+          [ZERO, ZERO, ZERO]
+        )
+      );
+
+      const receipt = await router.addLiquidity(aliceTokenBalance, tenMinutes, {from: alice});
+      processEventArgs(receipt, "EmptyEURxbBalance", (args) => {
+        expect(args.__length__).to.be.equal(0);
+      });
     });
 
     it('should revert adding liquidity if contract closed', async () => {
