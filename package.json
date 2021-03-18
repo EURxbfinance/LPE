@@ -18,9 +18,12 @@
   "dependencies": {
     "@openzeppelin/contracts": "^3.4.0",
     "@openzeppelin/test-helpers": "^0.5.10",
-    "@truffle/hdwallet-provider": "^1.2.2"
+    "@truffle/hdwallet-provider": "^1.2.2",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "dotenv": "^8.2.0"
   },
   "devDependencies": {
+    "@gnosis.pm/mock-contract": "^4.0.0",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",
     "babel-register": "^6.26.0",
@@ -35,6 +38,7 @@
     "eslint-plugin-jsx-a11y": "^6.4.1",
     "eslint-plugin-react": "^7.22.0",
     "eslint-plugin-react-hooks": "^4.2.0",
+    "eth-gas-reporter": "^0.2.21",
     "ethereumjs-testrpc-sc": "^6.5.1-sc.1",
     "fs-extra": "^9.1.0",
     "karma": "^6.1.1",

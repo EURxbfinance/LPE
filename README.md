@@ -10,6 +10,14 @@ Liquidity-Event Contract
 **Installation**
 
 - npm i
+- create `.secret` file and paste there seed phrase (12 words you got while creating eth acc) (for deploy only)
+- create `.env` file:
+```
+INFURA_ID=<infura api key>
+ETHERSCAN_API_KEY=<etherscan api key>
+DEPLOYER_ACCOUNT=<your address of account from .secret>
+... and other keys
+```
 
 **Run tests**
 

@@ -6,7 +6,7 @@
  *
  * More information about configuration can be found at:
  *
- * truffleframework.com/docs/advanced/configuration
+ * trufflesuite.com/docs/advanced/configuration
  *
  * To deploy via Infura you'll need a wallet provider (like @truffle/hdwallet-provider)
  * to sign your transactions before they're sent to a remote public node. Infura accounts
@@ -52,41 +52,32 @@ module.exports = {
     // You should run a client (like ganache-cli, geth or parity) in a separate terminal
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
-    //
-    // development: {
-    //  host: "127.0.0.1",     // Localhost (default: none)
-    //  port: 8545,            // Standard Ethereum port (default: none)
-    //  network_id: "*",       // Any network (default: none)
-    // },
+
+    // development: ganacheNetworkConfig,
 
     // Another network with more advanced options...
     // advanced: {
-      // port: 8777,             // Custom port
-      // network_id: 1342,       // Custom network
-      // gas: 8500000,           // Gas sent with each transaction (default: ~6700000)
-      // gasPrice: 20000000000,  // 20 gwei (in wei) (default: 100 gwei)
-      // from: <address>,        // Account to send txs from (default: accounts[0])
-      // websockets: true        // Enable EventEmitter interface for web3 (default: false)
+    // port: 8777,             // Custom port
+    // network_id: 1342,       // Custom network
+    // gas: 8500000,           // Gas sent with each transaction (default: ~6700000)
+    // gasPrice: 20000000000,  // 20 gwei (in wei) (default: 100 gwei)
+    // from: <address>,        // Account to send txs from (default: accounts[0])
+    // websockets: true        // Enable EventEmitter interface for web3 (default: false)
     // },
-
     // Useful for deploying to a public network.
-    // NB: It's important to wrap the provider as a function.
-    // ropsten: {
-      // provider: () => new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/YOUR-PROJECT-ID`),
-      // network_id: 3,       // Ropsten's id
-      // gas: 5500000,        // Ropsten has a lower block limit than mainnet
-      // confirmations: 2,    // # of confs to wait between deployments. (default: 0)
-      // timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
-      // skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
-    // },
+    rinkeby: rinkebyNetworkConfig,
+
+    // Use this network for part one of the deployment with free infura.
+    rinkeby_part_one: rinkebyNetworkConfig,
+    // Use this network for part two of the deployment with free infura.
+    rinkeby_part_two: rinkebyNetworkConfig
 
     // Useful for private networks
     // private: {
-      // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
-      // network_id: 2111,   // This network is yours, in the cloud.
-      // production: true    // Treats this network as if it was a public net. (default: false)
+    // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
+    // network_id: 2111,   // This network is yours, in the cloud.
+    // production: true    // Treats this network as if it was a public net. (default: false)
     // }
-    rinkeby: rinkebyNetworkConfig,
   },
 
   // Set default mocha options here, use special reporters etc.
@@ -100,10 +91,12 @@ module.exports = {
     etherscan: process.env.ETHERSCAN_API_KEY,
   },
 
+  contracts_directory: 'contractsDirectory',
   // Configure your compilers
   compilers: {
     solc: {
-      version: '0.7.6', // Fetch exact version from solc-bin (default: truffle's version)
+      version: 'solcVersion', // Fetch exact version from solc-bin (default: truffle's version)
+      // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
       settings: { // See the solidity docs for advice about optimization and evmVersion
         optimizer: {
           enabled: false,
@@ -117,4 +110,4 @@ module.exports = {
     'solidity-coverage',
     'truffle-plugin-verify',
   ],
-}
+};
