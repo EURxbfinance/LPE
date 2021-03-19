@@ -1,4 +1,4 @@
-Liquidity-Event Contract
+$XBE Liquidity Provider Event Contract
 =================
 
 XBE Liquidity event – UNISWAP and SUSHISWAP
