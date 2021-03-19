@@ -3,7 +3,7 @@ $XBE Liquidity Provider Event Contract
 
 XBE Liquidity event – UNISWAP and SUSHISWAP
 
-We are proud to announce the first liquidity event for EURxb’s governance token $XBE. This event will run over 10 days by distribution 1000 XBE split evenly between Sushiswap and Uniswap (500 each pool). Every day, 100 tokens will be distributed to LPs on both Uniswap and Sushiswap (50 XBE each pool, each day) for a total of 10 days. LPs can withdraw their rewards at anytime during the event.  
+This event will run over 10 days and distribute 1000 XBE split evenly between the USDT/XBE pools on Sushiswap and Uniswap respectively (500 XBE to each pool).  That means that over 10 days, every day a total of 100 XBE tokens will be awarded across the Uniswap and Sushiswap LPs (50 XBE per pool per day). Also note that LPs will be able to withdraw their rewards at any time during the event, even though liquidity will be locked till the end.
 
 Uniswap Pool address: https://info.uniswap.org/pair/0x5551c4812a89bf840e3da6debd4cb1a2d5322e3a
 
