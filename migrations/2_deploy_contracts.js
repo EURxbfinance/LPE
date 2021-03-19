@@ -1,6 +1,10 @@
-const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
-const ERC20 = artifacts.require('ERC20');
+const jsonUniswapV2Factory = require('@uniswap/v2-core/build/UniswapV2Factory.json');
 
+const contract = require('@truffle/contract');
+
+const UniswapV2Factory = contract(jsonUniswapV2Factory);
+
+const ERC20 = artifacts.require('ERC20');
 
 const Router = artifacts.require('Router');
 const Incentivizer = artifacts.require('Incentivizer');
@@ -8,6 +12,7 @@ const Incentivizer = artifacts.require('Incentivizer');
 // const ether = (n) => web3.utils.toWei(n, 'ether');
 
 module.exports = function (deployer, network) {
+  UniswapV2Factory.setProvider(this.web3._provider);
   deployer.then(async () => {
     if (network === 'test' || network === 'soliditycoverage') {
       // do nothing

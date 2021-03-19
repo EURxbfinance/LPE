@@ -36,7 +36,7 @@ const rinkebyNetworkConfig = {
 
 const mainnetNetworkConfig = {
   provider: () => new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/${process.env.INFURA_ID}`),
-  network_id: 4, // Rinkeby's id
+  network_id: 1,
   networkCheckTimeout: 10000000,
   gasLimit: 5000000,
   from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
