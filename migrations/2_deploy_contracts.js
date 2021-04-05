@@ -132,10 +132,10 @@ module.exports = function (deployer, network) {
         process.env.MAINNET_REWARDS_DURATION,
         { from: process.env.DEPLOYER_ACCOUNT },
       );
-      const xbe = await ERC20.at(xbeAddress);
-      const xbeReward = '500000000000000000000'; // 500 xbe
-      await xbe.transfer(incentivizerUni.address, xbeReward, { from: process.env.DEPLOYER_ACCOUNT });
-      await xbe.transfer(incentivizerSushi.address, xbeReward, { from: process.env.DEPLOYER_ACCOUNT });
+      // const xbe = await ERC20.at(xbeAddress);
+      // const xbeReward = '500000000000000000000'; // 500 xbe
+      // await xbe.transfer(incentivizerUni.address, xbeReward, { from: process.env.DEPLOYER_ACCOUNT });
+      // await xbe.transfer(incentivizerSushi.address, xbeReward, { from: process.env.DEPLOYER_ACCOUNT });
     } else {
       console.error(`Unsupported network: ${network}`);
     }
